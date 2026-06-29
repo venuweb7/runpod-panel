@@ -1,0 +1,43 @@
+services:
+  runpod-panel:
+    build: .
+    container_name: runpod-panel
+    restart: unless-stopped
+    environment:
+      RUNPOD_API_KEY: ${RUNPOD_API_KEY}
+      ALLOWED_EMAILS: ${ALLOWED_EMAILS}
+    networks: [traefik]
+    # NOT publishing any port: only oauth2-proxy/Traefik reach it on the internal network.
+
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.6.0
+    container_name: runpod-panel-auth
+    restart: unless-stopped
+    command:
+      - --provider=google
+      - --email-domain=*
+      - --authenticated-emails-file=/etc/oauth2/emails
+      - --upstream=http://runpod-panel:8000
+      - --http-address=0.0.0.0:4180
+      - --reverse-proxy=true
+      - --cookie-secure=true
+      - --set-xauthrequest=true       # passes X-Auth-Request-Email to the panel
+      - --pass-access-token=false
+    environment:
+      OAUTH2_PROXY_CLIENT_ID: ${OAUTH2_PROXY_CLIENT_ID}
+      OAUTH2_PROXY_CLIENT_SECRET: ${OAUTH2_PROXY_CLIENT_SECRET}
+      OAUTH2_PROXY_COOKIE_SECRET: ${OAUTH2_PROXY_COOKIE_SECRET}
+      OAUTH2_PROXY_REDIRECT_URL: https://${PANEL_HOST}/oauth2/callback
+    volumes:
+      - ./emails:/etc/oauth2/emails:ro
+    networks: [traefik]
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.runpodpanel.rule=Host(`${PANEL_HOST}`)
+      - traefik.http.routers.runpodpanel.entrypoints=websecure
+      - traefik.http.routers.runpodpanel.tls.certresolver=letsencrypt
+      - traefik.http.services.runpodpanel.loadbalancer.server.port=4180
+
+networks:
+  traefik:
+    external: true   # <-- set to the real existing Traefik network name (docker network ls)
