@@ -26,3 +26,11 @@ def test_pods_requires_allowed_email(monkeypatch):
     assert c.get("/api/pods").status_code == 403  # no header
     assert c.get("/api/pods", headers={"X-Auth-Request-Email": "evil@y.com"}).status_code == 403
     assert c.get("/api/pods", headers={"X-Auth-Request-Email": "me@x.com"}).status_code == 200
+
+
+def test_pods_502_on_runpod_error(monkeypatch):
+    monkeypatch.setattr(main, "ALLOWED", {"me@x.com"})
+    def boom(): raise runpod_client.RunPodError("down")
+    monkeypatch.setattr(runpod_client, "list_pods", boom)
+    r = _client().get("/api/pods", headers={"X-Auth-Request-Email": "me@x.com"})
+    assert r.status_code == 502
