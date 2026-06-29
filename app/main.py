@@ -2,7 +2,7 @@
 import os
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, Request, Depends
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import FileResponse
 from app import runpod_client
 
 ALLOWED = {e.strip().lower() for e in os.environ.get("ALLOWED_EMAILS", "").split(",") if e.strip()}
