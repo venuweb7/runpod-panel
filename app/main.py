@@ -13,18 +13,16 @@ app = FastAPI(title="RunPod Panel")
 
 def require_user(request: Request) -> str:
     email = (request.headers.get("X-Auth-Request-Email") or "").lower()
-    if not ALLOWED or email not in ALLOWED:
+    user = request.headers.get("X-Auth-Request-User") or ""
+    if not ALLOWED or not user or email not in ALLOWED:
+        print(f"AUDIT DENY email={email or '-'} path={request.url.path}", flush=True)  # FIX L3
         raise HTTPException(status_code=403, detail="forbidden")
     return email
 
 
 @app.get("/healthz")
 def healthz():
-    try:
-        runpod_client.list_pods()
-        return {"ok": True}
-    except Exception:
-        return JSONResponse(status_code=503, content={"ok": False, "error": "api_key_or_upstream"})
+    return {"ok": True, "service": "runpod-panel"}
 
 
 @app.get("/api/pods")
@@ -42,6 +40,7 @@ def api_start(pod_id: str, user: str = Depends(require_user)):
         print(f"AUDIT start pod={pod_id} by={user}", flush=True)
         return result
     except runpod_client.RunPodError:
+        print(f"AUDIT start-FAIL pod={pod_id} by={user}", flush=True)
         raise HTTPException(status_code=502, detail="start failed")
 
 
@@ -52,6 +51,7 @@ def api_stop(pod_id: str, user: str = Depends(require_user)):
         print(f"AUDIT stop pod={pod_id} by={user}", flush=True)
         return result
     except runpod_client.RunPodError:
+        print(f"AUDIT stop-FAIL pod={pod_id} by={user}", flush=True)
         raise HTTPException(status_code=502, detail="stop failed")
 
 

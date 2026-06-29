@@ -9,6 +9,7 @@
 3. **DNS:** add an A record `pods.<yourdomain>` → your VPS IP (so Traefik can get a cert).
 4. Confirm your Traefik network name: `docker network ls` (look for the one your Open WebUI /
    LiteLLM use). Confirm your certresolver name in Traefik (e.g. `letsencrypt`).
+5. If you add a non-gmail allowed address, also update `--email-domain` in docker-compose.yml.
 
 ## Install
 1. Put this folder at `/docker/runpod-panel/` (upload, or `git clone`).

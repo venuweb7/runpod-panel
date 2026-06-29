@@ -19,7 +19,7 @@ def _api_key() -> str:
 def _graphql(query: str, variables: dict | None = None) -> dict:
     resp = httpx.post(
         RUNPOD_API_URL,
-        params={"api_key": _api_key()},
+        headers={"Authorization": f"Bearer {_api_key()}", "Content-Type": "application/json"},
         json={"query": query, "variables": variables or {}},
         timeout=15,
     )

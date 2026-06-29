@@ -39,7 +39,7 @@ def test_graphql_raises_on_errors(monkeypatch):
 
 def test_start_and_stop_send_mutations(monkeypatch):
     sent = {}
-    def fake_post(url, params=None, json=None, timeout=None):
+    def fake_post(url, headers=None, params=None, json=None, timeout=None):
         sent["query"] = json["query"]; sent["vars"] = json["variables"]
         key = "podResume" if "podResume" in json["query"] else "podStop"
         return _FakeResponse({"data": {key: {"id": "abc", "desiredStatus": "X"}}})
