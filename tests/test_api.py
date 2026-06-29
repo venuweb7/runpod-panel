@@ -34,3 +34,18 @@ def test_pods_502_on_runpod_error(monkeypatch):
     monkeypatch.setattr(runpod_client, "list_pods", boom)
     r = _client().get("/api/pods", headers={"X-Auth-Request-Email": "me@x.com"})
     assert r.status_code == 502
+
+
+def test_start_and_stop_call_client_and_audit(monkeypatch, capsys):
+    monkeypatch.setattr(main, "ALLOWED", {"me@x.com"})
+    calls = {}
+    monkeypatch.setattr(runpod_client, "start_pod", lambda pid: calls.setdefault("start", pid) or {"id": pid})
+    monkeypatch.setattr(runpod_client, "stop_pod", lambda pid: calls.setdefault("stop", pid) or {"id": pid})
+    h = {"X-Auth-Request-Email": "me@x.com"}
+    c = _client()
+    assert c.post("/api/pods/abc/start", headers=h).status_code == 200
+    assert c.post("/api/pods/abc/stop", headers=h).status_code == 200
+    assert calls == {"start": "abc", "stop": "abc"}
+    out = capsys.readouterr().out
+    assert "AUDIT start pod=abc by=me@x.com" in out
+    assert "AUDIT stop pod=abc by=me@x.com" in out
