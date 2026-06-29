@@ -6,8 +6,10 @@ services:
     environment:
       RUNPOD_API_KEY: ${RUNPOD_API_KEY}
       ALLOWED_EMAILS: ${ALLOWED_EMAILS}
-    networks: [internal]
-    # NOT publishing any port: only oauth2-proxy/Traefik reach it on the internal network.
+    # On this project's private default bridge only. No published port, no traefik label,
+    # so Traefik never routes to it directly. Reachable ONLY by oauth2-proxy (same bridge).
+    # Isolated from your other /docker projects (separate bridges) and from the internet —
+    # but still has OUTBOUND internet (normal bridge) to reach the RunPod API.
 
   oauth2-proxy:
     image: quay.io/oauth2-proxy/oauth2-proxy:v7.6.0
@@ -21,7 +23,7 @@ services:
       - --http-address=0.0.0.0:4180
       - --reverse-proxy=true
       - --cookie-secure=true
-      - --set-xauthrequest=true       # passes X-Auth-Request-Email to the panel
+      - --set-xauthrequest=true          # passes X-Auth-Request-Email/User to the panel
       - --pass-access-token=false
     environment:
       OAUTH2_PROXY_CLIENT_ID: ${OAUTH2_PROXY_CLIENT_ID}
@@ -30,17 +32,11 @@ services:
       OAUTH2_PROXY_REDIRECT_URL: https://${PANEL_HOST}/oauth2/callback
     volumes:
       - ./emails:/etc/oauth2/emails:ro
-    networks: [internal, traefik]
+    # Same pattern as your open-webui / litellm: host-mode Traefik discovers this via the
+    # Docker socket and routes to it on this project's default bridge. websecure + letsencrypt.
     labels:
       - traefik.enable=true
-      - traefik.http.routers.runpodpanel.rule=Host(`${PANEL_HOST}`)
-      - traefik.http.routers.runpodpanel.entrypoints=websecure
-      - traefik.http.routers.runpodpanel.tls.certresolver=letsencrypt
-      - traefik.http.services.runpodpanel.loadbalancer.server.port=4180
-
-# runpod-panel is reachable ONLY by oauth2-proxy (internal net); never published.
-networks:
-  internal:
-    internal: true
-  traefik:
-    external: true   # <-- real existing Traefik network name (docker network ls)
+      - traefik.http.routers.runpod-panel.rule=Host(`${PANEL_HOST}`)
+      - traefik.http.routers.runpod-panel.entrypoints=websecure
+      - traefik.http.routers.runpod-panel.tls.certresolver=letsencrypt
+      - traefik.http.services.runpod-panel.loadbalancer.server.port=4180
