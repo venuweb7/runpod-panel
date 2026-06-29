@@ -35,3 +35,18 @@ def test_graphql_raises_on_errors(monkeypatch):
         assert False, "expected RunPodError"
     except runpod_client.RunPodError:
         pass
+
+
+def test_start_and_stop_send_mutations(monkeypatch):
+    sent = {}
+    def fake_post(url, params=None, json=None, timeout=None):
+        sent["query"] = json["query"]; sent["vars"] = json["variables"]
+        key = "podResume" if "podResume" in json["query"] else "podStop"
+        return _FakeResponse({"data": {key: {"id": "abc", "desiredStatus": "X"}}})
+    monkeypatch.setenv("RUNPOD_API_KEY", "k")
+    monkeypatch.setattr(httpx, "post", fake_post)
+
+    assert runpod_client.start_pod("abc")["id"] == "abc"
+    assert "podResume" in sent["query"] and sent["vars"]["podId"] == "abc"
+    assert runpod_client.stop_pod("abc")["id"] == "abc"
+    assert "podStop" in sent["query"] and sent["vars"]["podId"] == "abc"
